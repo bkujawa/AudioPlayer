@@ -28,7 +28,7 @@ namespace NewAudioPlayer
         }
 
         //Members
-        //[DebuggerStepThrough]
+        [DebuggerStepThrough]
         public bool CanExecute(object parameter) => _canExecute == null ? true : _canExecute(parameter);
 
         public event EventHandler CanExecuteChanged

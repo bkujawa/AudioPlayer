@@ -3,21 +3,27 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:NewAudioPlayer"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
-    <Grid Margin="20">
+        Title="MainWindow" MinHeight="600" MinWidth="600">
+    <Grid Margin="0" ShowGridLines="False">
         <Grid.RowDefinitions>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="20"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="20"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition MinWidth="200"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition MinWidth="200"/>
+        </Grid.ColumnDefinitions>
+        <Button Style="{StaticResource MenuButtonStyle}" Grid.Row="0" Content="Menu" Command="{Binding Open}" HorizontalAlignment="Left"/>
 
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
-            <Button Style="{StaticResource ButtonStyle}" Content="Play" Command="{Binding Play}"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
+            <Button Style="{StaticResource ButtonStyle}" Content="Play" Command="{Binding Play}" Margin="0"/>
             <Button Style="{StaticResource ButtonStyle}" Content="Pause" Command="{Binding Pause}"/>
             <Button Style="{StaticResource ButtonStyle}" Content="Stop" Command="{Binding Stop}"/>
             <Button Style="{StaticResource ButtonStyle}" Content="Next" Command="{Binding Next}"/>
@@ -25,11 +31,31 @@
             <Button Style="{StaticResource ButtonStyle}" Content="Volume -" Command="{Binding Down}"/>
             <Button Style="{StaticResource ButtonStyle}" Content="Volume +" Command="{Binding Up}"/>
             <Button Style="{StaticResource ButtonStyle}" Content="Mute" Command="{Binding Mute}"/>
+            <TextBlock Text="{Binding VolumePosition}" HorizontalAlignment="Right" FontSize="15"/>
         </StackPanel>
-        <ProgressBar Grid.Row="2" Value="{Binding Progress}" Maximum="100" Height="20" />
-        <TextBlock Grid.Row ="2" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding TimeInfo}"/>
-        <ListBox Grid.Row="4" SelectedItem="{Binding SelectedSound}" ItemsSource="{Binding Sounds}" Style="{StaticResource SoundListStyle}"/>
-        <Button Grid.Row="5" HorizontalAlignment="Right" Content="Open directory" Command="{Binding Open}" Style="{StaticResource ButtonStyle}" />
-        <TextBlock Grid.Row="5" HorizontalAlignment="Left" Text="{Binding CurrentSound}" VerticalAlignment="Center"/>
+        
+        <ProgressBar Grid.Row="4" Value="{Binding Progress}" Maximum="100" Height="20" Grid.ColumnSpan="3" />
+        <TextBlock Grid.Row ="4" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding TimeInfo}" Grid.ColumnSpan="3"/>
+        
+        <ListBox Grid.Row="5" SelectedItem="{Binding SelectedSound}" ItemsSource="{Binding Sounds}" Style="{StaticResource SoundListStyle}"/>
+        
+        <GridSplitter Grid.Row="5" Grid.Column="1" VerticalAlignment="Stretch" HorizontalAlignment="Center" ShowsPreview="False" Width="4"/>
+        
+        <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.ColumnSpan="3">
+            <Button Content="Open directory" Command="{Binding Open}" Style="{StaticResource ButtonStyle}" />
+            <TextBlock Text="{Binding CurrentSound}" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
+            <TextBlock Text="Playlists" FontWeight="Bold" FontSize="20"/>
+            <Button Style="{StaticResource ButtonStyle}" HorizontalAlignment="Right" Content="Save" Command="{Binding SavePlaylist}"/>
+            <TextBox MinWidth="80" Text="{Binding SavedPlaylistName}"></TextBox>
+            <Button Style="{StaticResource ButtonStyle}" HorizontalAlignment="Right" Content="Open" Command="{Binding OpenPlaylist}"/>
+            <Button Style="{StaticResource ButtonStyle}" Content="Delete" Command="{Binding DeletePlaylist}"/>
+        </StackPanel>
+
+        <ListBox Grid.Row="5" Grid.Column="2" SelectedItem="{Binding SelectedPlaylist}" ItemsSource="{Binding Playlists}" Style="{StaticResource SoundListStyle}"/>
+
+
     </Grid>
 </Window>

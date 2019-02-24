@@ -15,7 +15,7 @@ namespace NewAudioPlayer
 {
     class AudioPlayerViewModel : ViewModelBase
     {
-        private SoundEngine engine = new SoundEngine();
+        private SoundEngine engine;
         private SoundState currentState;
         private DispatcherTimer timer;
 
@@ -26,6 +26,17 @@ namespace NewAudioPlayer
             set
             {
                 this.progress = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private double volumePosition;
+        public double VolumePosition
+        {
+            get { return this.volumePosition; }
+            set
+            {
+                this.volumePosition = value;
                 OnPropertyChanged();
             }
         }
@@ -47,7 +58,19 @@ namespace NewAudioPlayer
             get { return this.currentSound; }
             set
             {
-                this.currentSound = $"Currently playing: " + value;
+                this.currentSound = $"Currently playing: [" + value + $"]";
+                OnPropertyChanged();
+            }
+        }
+
+        private string savedPlaylistName;
+
+        public string SavedPlaylistName
+        {
+            get { return this.savedPlaylistName; }
+            set
+            {
+                this.savedPlaylistName = value;
                 OnPropertyChanged();
             }
         }
@@ -61,8 +84,14 @@ namespace NewAudioPlayer
         public ICommand Up { get; private set; }
         public ICommand Down { get; private set; }
         public ICommand Mute { get; private set; }
+        public ICommand SavePlaylist { get; private set; }
+        public ICommand OpenPlaylist { get; private set; }
+        public ICommand DeletePlaylist { get; private set; }
+        public ICommand DeleteSound { get; private set; }
 
         public ObservableCollection<Sound> Sounds { get; private set; }
+        public ObservableCollection<Sound> Playlists { get; private set; }
+        
         private Sound selectedSound;
         public Sound SelectedSound
         {
@@ -73,8 +102,21 @@ namespace NewAudioPlayer
                 OnPropertyChanged();
             }
         }
+
+        private Sound selectedPlaylist;
+
+        public Sound SelectedPlaylist
+        {
+            get { return this.selectedPlaylist; }
+            set
+            {
+                this.selectedPlaylist = value;
+                OnPropertyChanged();
+            }
+        }
         public AudioPlayerViewModel()
         {
+            engine = new SoundEngine();
             Play = new RelayCommand(DoPlay, CanPlay);
             Open = new RelayCommand(DoOpen, CanOpen);
             Pause = new RelayCommand(DoPause, CanPause);
@@ -84,18 +126,43 @@ namespace NewAudioPlayer
             Up = new RelayCommand(DoUp, CanOpen);
             Down = new RelayCommand(DoDown, CanOpen);
             Mute = new RelayCommand(DoMute, CanOpen);
+            SavePlaylist = new RelayCommand(DoSavePlaylist, CanSavePlaylist);
+            OpenPlaylist = new RelayCommand(DoOpenPlaylist, CanOpenPlaylist);
+            DeletePlaylist = new RelayCommand(DoDeletePlaylist, CanDeletePlaylist);
             Sounds = new ObservableCollection<Sound>();
+            Playlists = new ObservableCollection<Sound>();
             this.engine.StateChanged += OnStateChanged;
             this.engine.SoundError += OnSoundError;
             this.timer = new DispatcherTimer();
             this.timer.Interval = TimeSpan.FromSeconds(1);
             this.timer.Tick += OnTick;
             this.timer.Start();
+            VolumePosition = engine.GetVolumePosition();
+            FillPlaylist();
 
             var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var dir = config.AppSettings.Settings["DirPath"]?.Value;
-            if (!string.IsNullOrEmpty(dir))
-                FillSounds(dir);
+            var play = config.AppSettings.Settings["PlayPath"]?.Value;
+            try
+            {
+                if (!string.IsNullOrEmpty(dir))
+                    FillSoundsDirectory(dir);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+
+            //try
+            //{
+            //    if (!string.IsNullOrEmpty(play))
+            //        FillSoundsPlaylist(play);
+            //}
+            //catch (Exception e)
+            //{
+            //    //MessageBox.Show(e.Message);
+            //}
+
         }
 
         private void OnTick(object sender, EventArgs s)
@@ -157,8 +224,17 @@ namespace NewAudioPlayer
             this.engine.Play(SelectedSound.Path);
         }
 
-        private void DoUp(object obj) => engine.Volume(true);
-        private void DoDown(object obj) => engine.Volume(false);
+        private void DoUp(object obj)
+        {
+            engine.Volume(true);
+            VolumePosition = engine.GetVolumePosition();
+        }
+        private void DoDown(object obj)
+        {
+            engine.Volume(false);
+            VolumePosition = engine.GetVolumePosition();
+        }
+
         private void DoMute(object obj) => engine.Volume(null);
 
         private bool CanOpen(object obj) => true;
@@ -168,24 +244,12 @@ namespace NewAudioPlayer
             dialog.ShowDialog();
 
             var dirPath = dialog.SelectedPath;
-            FillSounds(dirPath);
-            if (!string.IsNullOrEmpty(dirPath))
-            {
-                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                if (config.AppSettings.Settings["DirPath"] != null)
-                {
-                    config.AppSettings.Settings["DirPath"].Value = dirPath;
-                }
-                else
-                {
-                    config.AppSettings.Settings.Add(new KeyValueConfigurationElement("DirPath", dirPath));
-                }
-                ConfigurationManager.AppSettings["DirPath"] = dirPath;
-                config.Save(ConfigurationSaveMode.Full);
-            }
+            FillSoundsDirectory(dirPath);
+            SetDefaultDirectory(dirPath);
         }
 
-        private void FillSounds(string dirPath)
+        //Fills ObservableCollection<Sound> Sounds with files found in directory pointed by dirPath.
+        private void FillSoundsDirectory(string dirPath)
         {
             if (!string.IsNullOrEmpty(dirPath))
             {
@@ -205,6 +269,132 @@ namespace NewAudioPlayer
                 }
                 Sounds.Clear();
                 soundList.ForEach(c => Sounds.Add(c));
+            }
+        }
+
+        //Fills ObservableCollection<Sound> Sounds with file paths saved in playlist text file pointed by listPath.
+        private void FillSoundsPlaylist(string listPath)
+        {
+            if (!string.IsNullOrEmpty(listPath))
+            {
+                var soundList = new List<Sound>();
+                var allFiles = File.ReadAllLines(listPath);
+                for (int i = 0; i < allFiles.Length - 1; i = i + 2)
+                {
+                    soundList.Add(new Sound()
+                    {
+                        Path = allFiles[i],
+                        Name = allFiles[i + 1]
+                    });
+                }
+                Sounds.Clear();
+                soundList.ForEach(c => Sounds.Add(c));
+            }
+        }
+
+        private void FillPlaylist()
+        {
+            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
+            var playlists = new List<Sound>();
+            var allFiles = Directory.GetFiles(docPath);
+            foreach(var file in allFiles)
+            {
+                var pathExtension = Path.GetExtension(file);
+                if (pathExtension?.ToUpper() == ".TXT")
+                {
+                    playlists.Add(new Sound()
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        Path = file
+                    });
+                }
+            }
+            Playlists.Clear();
+            playlists.ForEach(c => Playlists.Add(c));
+        }
+
+        private bool CanSavePlaylist(object obj) => true;
+
+        //CanOpenPlaylist(need to check if file path send by user is right), CanSavePlaylist(check if there are any sounds)
+        //DoOpenPlaylist, DoSavePlaylist
+        private void DoSavePlaylist(object obj)
+        {         
+            string playlistName = SavedPlaylistName + ".txt";
+
+            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
+            Directory.CreateDirectory(docPath);
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(docPath, playlistName)))
+            {
+                foreach (var sound in Sounds)
+                {
+                    outputFile.WriteLine(sound.Path);
+                    outputFile.WriteLine(sound.Name);
+                }
+            }
+
+            FillPlaylist();
+        }
+
+        private bool CanOpenPlaylist(object obj) => true;
+        private void DoOpenPlaylist(object obj)
+        {
+            //using (OpenFileDialog dialog = new OpenFileDialog())
+            //{
+            //    dialog.ShowDialog();
+            //    var filePath = dialog.FileName;
+            //    FillSoundsPlaylist(filePath);
+            //    SetDefaultPlaylist(filePath);
+            //}
+            FillSoundsPlaylist(SelectedPlaylist.Path);
+        }
+
+        private bool CanDeletePlaylist(object obj) => true;
+        private void DoDeletePlaylist(object obj)
+        {
+            try
+            {
+                File.Delete(SelectedPlaylist.Path);
+                Playlists.Remove(SelectedPlaylist);
+            }
+            catch(Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+        }
+
+        private void SetDefaultDirectory(string dirPath)
+        {
+            if (!string.IsNullOrEmpty(dirPath))
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                if (config.AppSettings.Settings["DirPath"] != null)
+                {
+                    config.AppSettings.Settings["DirPath"].Value = dirPath;
+                }
+                else
+                {
+                    config.AppSettings.Settings.Add(new KeyValueConfigurationElement("DirPath", dirPath));
+                }
+                ConfigurationManager.AppSettings["DirPath"] = dirPath;
+                config.Save(ConfigurationSaveMode.Full);
+            }
+        }
+
+        private void SetDefaultPlaylist(string listPath)
+        {
+            if (!string.IsNullOrEmpty(listPath))
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                if (config.AppSettings.Settings["PlayPath"] != null)
+                {
+                    config.AppSettings.Settings["PlayPath"].Value = listPath;
+                }
+                else
+                {
+                    config.AppSettings.Settings.Add(new KeyValueConfigurationElement("PlayPath", listPath));
+                }
+                ConfigurationManager.AppSettings["PlayPath"] = listPath;
+                config.Save(ConfigurationSaveMode.Full);
             }
         }
 

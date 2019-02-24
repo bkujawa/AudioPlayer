@@ -9,6 +9,11 @@ namespace NewAudioPlayer
 {
     public class SoundEngine
     {
+
+        public SoundEngine()
+        {
+            this.player.Volume = 1;
+        }
         private MediaPlayer player = new MediaPlayer();
         private SoundState state;
 
@@ -81,9 +86,14 @@ namespace NewAudioPlayer
                 else
                 {
                     if (this.player.IsMuted == true)
+                    {
                         this.player.IsMuted = false;
+                    }
                     else
-                        this.player.IsMuted = true;
+                    {
+                        this.player.IsMuted = true;                      
+                    }
+
                 }
             }
             catch(Exception ex)
@@ -100,6 +110,11 @@ namespace NewAudioPlayer
                 return Math.Min(100, 100 * this.player.Position.TotalSeconds / this.player.NaturalDuration.TimeSpan.TotalSeconds);
             else
                 return 0;
+        }
+
+        public double GetVolumePosition()
+        {
+            return Math.Min(100, 100 * this.player.Volume / 100);
         }
 
         public Tuple<TimeSpan, TimeSpan> GetTimePosition()
@@ -153,8 +168,7 @@ namespace NewAudioPlayer
         Unknown,
         Playing,
         Paused,
-        Stopped,
-        Muted
+        Stopped
     }
 
 }
