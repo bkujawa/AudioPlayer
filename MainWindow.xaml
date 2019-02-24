@@ -42,11 +42,11 @@
         <GridSplitter Grid.Row="5" Grid.Column="1" VerticalAlignment="Stretch" HorizontalAlignment="Center" ShowsPreview="False" Width="4"/>
         
         <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.ColumnSpan="3">
-            <Button Content="Open directory" Command="{Binding Open}" Style="{StaticResource ButtonStyle}" />
+            <Button Content="Delete song" Command="{Binding DeleteSound}" Style="{StaticResource ButtonStyle}" />
             <TextBlock Text="{Binding CurrentSound}" VerticalAlignment="Center"/>
         </StackPanel>
 
-        <StackPanel Orientation="Horizontal" Grid.Row="6" Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
+        <StackPanel Orientation="Horizontal" Grid.Row="6" HorizontalAlignment="Right" Grid.ColumnSpan="3">
             <TextBlock Text="Playlists" FontWeight="Bold" FontSize="20"/>
             <Button Style="{StaticResource ButtonStyle}" HorizontalAlignment="Right" Content="Save" Command="{Binding SavePlaylist}"/>
             <TextBox MinWidth="80" Text="{Binding SavedPlaylistName}"></TextBox>

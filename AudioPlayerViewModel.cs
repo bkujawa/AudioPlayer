@@ -17,7 +17,7 @@ namespace NewAudioPlayer
     {
         private SoundEngine engine;
         private SoundState currentState;
-        private DispatcherTimer timer;
+        private readonly DispatcherTimer timer;
 
         private double progress;
         public double Progress
@@ -129,6 +129,7 @@ namespace NewAudioPlayer
             SavePlaylist = new RelayCommand(DoSavePlaylist, CanSavePlaylist);
             OpenPlaylist = new RelayCommand(DoOpenPlaylist, CanOpenPlaylist);
             DeletePlaylist = new RelayCommand(DoDeletePlaylist, CanDeletePlaylist);
+            DeleteSound = new RelayCommand(DoDeleteSound, CanDeleteSound);
             Sounds = new ObservableCollection<Sound>();
             Playlists = new ObservableCollection<Sound>();
             this.engine.StateChanged += OnStateChanged;
@@ -140,29 +141,18 @@ namespace NewAudioPlayer
             VolumePosition = engine.GetVolumePosition();
             FillPlaylist();
 
-            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            var dir = config.AppSettings.Settings["DirPath"]?.Value;
-            var play = config.AppSettings.Settings["PlayPath"]?.Value;
-            try
-            {
-                if (!string.IsNullOrEmpty(dir))
-                    FillSoundsDirectory(dir);
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
-            }
-
+            //var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            //var dir = config.AppSettings.Settings["DirPath"]?.Value;
+            //var play = config.AppSettings.Settings["PlayPath"]?.Value;
             //try
             //{
-            //    if (!string.IsNullOrEmpty(play))
-            //        FillSoundsPlaylist(play);
+            //    if (!string.IsNullOrEmpty(dir))
+            //        FillSoundsDirectory(dir);
             //}
             //catch (Exception e)
             //{
-            //    //MessageBox.Show(e.Message);
+            //    MessageBox.Show(e.Message);
             //}
-
         }
 
         private void OnTick(object sender, EventArgs s)
@@ -272,13 +262,61 @@ namespace NewAudioPlayer
             }
         }
 
-        //Fills ObservableCollection<Sound> Sounds with file paths saved in playlist text file pointed by listPath.
-        private void FillSoundsPlaylist(string listPath)
+        //Fills ObservableCollection<Sound> Playlists with files found in /user/MyDocuments/AudioPlayer directory.
+        private void FillPlaylist()
         {
-            if (!string.IsNullOrEmpty(listPath))
+            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
+            var playlists = new List<Sound>();
+            try
+            {
+                var allFiles = Directory.GetFiles(docPath);
+                foreach (var file in allFiles)
+                {
+                    var pathExtension = Path.GetExtension(file);
+                    if (pathExtension?.ToUpper() == ".TXT")
+                    {
+                        playlists.Add(new Sound()
+                        {
+                            Name = Path.GetFileNameWithoutExtension(file),
+                            Path = file
+                        });
+                    }
+                }
+                Playlists.Clear();
+                playlists.ForEach(c => Playlists.Add(c));
+            }
+            catch(Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+        }
+
+        private bool CanSavePlaylist(object obj) => true;
+        private void DoSavePlaylist(object obj)
+        {         
+            string playlistName = SavedPlaylistName + ".txt";
+
+            // Playlist is saved in default folder /user/MyDocuments/AudioPlayer
+            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
+            Directory.CreateDirectory(docPath);
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(docPath, playlistName)))
+            {
+                foreach (var sound in Sounds)
+                {
+                    outputFile.WriteLine(sound.Path);
+                    outputFile.WriteLine(sound.Name);
+                }
+            }
+            FillPlaylist();
+        }
+
+        private bool CanOpenPlaylist(object obj) => true;
+        private void DoOpenPlaylist(object obj)
+        {
+            if (!string.IsNullOrEmpty(SelectedPlaylist.Path))
             {
                 var soundList = new List<Sound>();
-                var allFiles = File.ReadAllLines(listPath);
+                var allFiles = File.ReadAllLines(SelectedPlaylist.Path);
                 for (int i = 0; i < allFiles.Length - 1; i = i + 2)
                 {
                     soundList.Add(new Sound()
@@ -292,63 +330,7 @@ namespace NewAudioPlayer
             }
         }
 
-        private void FillPlaylist()
-        {
-            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
-            var playlists = new List<Sound>();
-            var allFiles = Directory.GetFiles(docPath);
-            foreach(var file in allFiles)
-            {
-                var pathExtension = Path.GetExtension(file);
-                if (pathExtension?.ToUpper() == ".TXT")
-                {
-                    playlists.Add(new Sound()
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file),
-                        Path = file
-                    });
-                }
-            }
-            Playlists.Clear();
-            playlists.ForEach(c => Playlists.Add(c));
-        }
-
-        private bool CanSavePlaylist(object obj) => true;
-
-        //CanOpenPlaylist(need to check if file path send by user is right), CanSavePlaylist(check if there are any sounds)
-        //DoOpenPlaylist, DoSavePlaylist
-        private void DoSavePlaylist(object obj)
-        {         
-            string playlistName = SavedPlaylistName + ".txt";
-
-            string docPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"AudioPlayer");
-            Directory.CreateDirectory(docPath);
-            using (StreamWriter outputFile = new StreamWriter(Path.Combine(docPath, playlistName)))
-            {
-                foreach (var sound in Sounds)
-                {
-                    outputFile.WriteLine(sound.Path);
-                    outputFile.WriteLine(sound.Name);
-                }
-            }
-
-            FillPlaylist();
-        }
-
-        private bool CanOpenPlaylist(object obj) => true;
-        private void DoOpenPlaylist(object obj)
-        {
-            //using (OpenFileDialog dialog = new OpenFileDialog())
-            //{
-            //    dialog.ShowDialog();
-            //    var filePath = dialog.FileName;
-            //    FillSoundsPlaylist(filePath);
-            //    SetDefaultPlaylist(filePath);
-            //}
-            FillSoundsPlaylist(SelectedPlaylist.Path);
-        }
-
-        private bool CanDeletePlaylist(object obj) => true;
+        private bool CanDeletePlaylist(object obj) => SelectedPlaylist == null ? false : true;
         private void DoDeletePlaylist(object obj)
         {
             try
@@ -361,6 +343,13 @@ namespace NewAudioPlayer
                 MessageBox.Show(e.Message);
             }
         }
+
+        private bool CanDeleteSound(object obj) => SelectedSound == null ? false : true;
+        private void DoDeleteSound(object obj)
+        {
+            Sounds.Remove(SelectedSound);
+        }
+
 
         private void SetDefaultDirectory(string dirPath)
         {
@@ -379,7 +368,6 @@ namespace NewAudioPlayer
                 config.Save(ConfigurationSaveMode.Full);
             }
         }
-
         private void SetDefaultPlaylist(string listPath)
         {
             if (!string.IsNullOrEmpty(listPath))
