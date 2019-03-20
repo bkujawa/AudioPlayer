@@ -54,7 +54,7 @@
             <Button Style="{StaticResource ButtonStyle}" Content="Delete" Command="{Binding DeletePlaylist}"/>
         </StackPanel>
 
-        <ListBox Grid.Row="5" Grid.Column="2" SelectedItem="{Binding SelectedPlaylist}" ItemsSource="{Binding Playlists}" Style="{StaticResource SoundListStyle}"/>
+        <ListBox Grid.Row="5" Grid.Column="2" SelectedItem="{Binding SelectedPlaylist}" ItemsSource="{Binding Playlists}" Style="{StaticResource SoundListStyle}"/> 
 
 
     </Grid>
