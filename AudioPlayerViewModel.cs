@@ -153,12 +153,57 @@ namespace NewAudioPlayer
             //{
             //    MessageBox.Show(e.Message);
             //}
+
+            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var play = config.AppSettings.Settings["PlayPath"]?.Value;
+            try
+            {
+                if (!string.IsNullOrEmpty(play))
+                {
+                    SelectedPlaylist = new Sound()
+                    {
+                        Path = play.ToString()
+                    };
+                    DoOpenPlaylist(null);
+                }
+            }
+            catch(Exception e)
+            {
+                MessageBox.Show(e.Message, "Playlist loading error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OnTick(object sender, EventArgs s)
         {
-            Progress = this.engine.GetFilePosition();
+            Progress = this.engine.GetFilePosition(); //Check what Progress returns, check if Progress ends and then invoke DoNext
             UpdateTime();
+            if (Progress == 100)
+            {
+                //if (PlayerState == RepeatSound)
+                //{
+                //      DoPlay(null);
+                //}
+                //else if (PlayerState == RepeatPlaylist)
+                //{
+                //      if (!CanDoNext(null))
+                //      {
+                //          SelectedSound = Sounds[0];
+                //          DoPlay(null);
+                //      }
+                //      else
+                //      {
+                //          DoNext(null);
+                //      }
+                //}
+                //else if (PlayerState == Shuffle)
+                //{
+                //      var index = new Random();
+                //      SelectedSound = Sounds[index];
+                //      DoPlay(null);
+                //}
+                if (CanDoNext(null))
+                    DoNext(null);
+            }
         }
         private void UpdateTime()
         {
@@ -327,6 +372,7 @@ namespace NewAudioPlayer
                 }
                 Sounds.Clear();
                 soundList.ForEach(c => Sounds.Add(c));
+                SetDefaultPlaylist(SelectedPlaylist.Path);
             }
         }
 

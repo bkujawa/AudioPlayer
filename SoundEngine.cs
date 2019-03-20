@@ -9,7 +9,6 @@ namespace NewAudioPlayer
 {
     public class SoundEngine
     {
-
         public SoundEngine()
         {
             this.player.Volume = 1;
